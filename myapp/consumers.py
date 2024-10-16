@@ -33,8 +33,13 @@
 #             return
 
 #         frame_count = 0
+#         fps = cap.get(cv2.CAP_PROP_FPS)  # Get the frame rate of the video
+#         delay = 1 / fps  # Calculate delay based on FPS
+#         total_duration = 15  # Process frames for 15 seconds
+#         max_frames = int(total_duration * fps)  # Calculate maximum number of frames to process
+
 #         try:
-#             while cap.isOpened():
+#             while cap.isOpened() and frame_count < max_frames:
 #                 ret, frame = cap.read()
 #                 if not ret:
 #                     break  # Exit if no more frames are available
@@ -57,14 +62,20 @@
 #                 }))
 #                 frame_count += 1
 
-#                 # Wait for 1 second before sending the next frame
-#                 await asyncio.sleep(1)  # Sleep for 1 second
+#                 # Wait based on the video's frame rate to keep it in sync
+#                 await asyncio.sleep(delay)
 
 #         except Exception as e:
 #             print("Error during frame processing:", str(e))
 
 #         finally:
 #             cap.release()  # Release the video capture object
+
+#         # Notify the client that processing is complete
+#         await self.send(text_data=json.dumps({
+#             'processing_complete': True,
+#             'message': 'Video processing completed.'
+#         }))
 
 import json
 import cv2
@@ -88,10 +99,12 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        # Extract the video URL from the received data
-        video_url = data.get('video_url')
-        if video_url:
+        # Check for video URL or a simple greeting message
+        if 'video_url' in data:
+            video_url = data['video_url']
             await self.process_video(video_url)
+        elif 'message' in data and data['message'].strip().lower() == 'hi':
+            await self.send_hello_response()
 
     async def process_video(self, video_url):
         # Open the video file
@@ -143,4 +156,10 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'processing_complete': True,
             'message': 'Video processing completed.'
+        }))
+
+    async def send_hello_response(self):
+        # Send a simple hello response
+        await self.send(text_data=json.dumps({
+            'message': 'hello'
         }))
