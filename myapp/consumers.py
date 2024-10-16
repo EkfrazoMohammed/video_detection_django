@@ -172,10 +172,13 @@ import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 from ultralytics import YOLO  # Ensure you have the ultralytics package installed
 
+
 class VideoProcessingConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.model = YOLO("yolov5n.pt")  # Load a lighter YOLO model for faster processing
+        self.model = YOLO(
+            "yolov5n.pt"
+        )  # Load a lighter YOLO model for faster processing
 
     async def connect(self):
         await self.accept()
@@ -188,10 +191,10 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
 
         # Check for video URL
-        if 'video_url' in data:
-            video_url = data['video_url']
+        if "video_url" in data:
+            video_url = data["video_url"]
             await self.process_video(video_url)
-        elif 'message' in data and data['message'].strip().lower() == 'hi':
+        elif "message" in data and data["message"].strip().lower() == "hi":
             await self.send_hello_response()
 
     async def process_video(self, video_url):
@@ -211,7 +214,9 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
                     break  # Exit if no more frames are available
 
                 # Resize frame for faster processing (optional)
-                frame = cv2.resize(frame, (640, 480))  # Resize to 640x480 for quicker processing
+                frame = cv2.resize(
+                    frame, (640, 480)
+                )  # Resize to 640x480 for quicker processing
 
                 # Process the frame asynchronously with YOLO
                 loop = asyncio.get_event_loop()
@@ -221,15 +226,19 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
                 annotated_frame = result[0].plot()
 
                 # Convert the annotated frame to JPG and encode to base64
-                _, buffer = cv2.imencode('.jpg', annotated_frame)
-                jpg_as_text = base64.b64encode(buffer).decode('utf-8')
+                _, buffer = cv2.imencode(".jpg", annotated_frame)
+                jpg_as_text = base64.b64encode(buffer).decode("utf-8")
 
                 # Send the annotated frame back to the client every second
                 if frame_count % frame_interval == 0:
-                    await self.send(text_data=json.dumps({
-                        'frame': jpg_as_text,
-                        'frame_number': frame_count,
-                    }))
+                    await self.send(
+                        text_data=json.dumps(
+                            {
+                                "frame": jpg_as_text,
+                                "frame_number": frame_count,
+                            }
+                        )
+                    )
 
                 frame_count += 1
 
@@ -243,13 +252,12 @@ class VideoProcessingConsumer(AsyncWebsocketConsumer):
             cap.release()  # Release the video capture object
 
         # Notify the client that processing is complete
-        await self.send(text_data=json.dumps({
-            'processing_complete': True,
-            'message': 'Video processing completed.'
-        }))
+        await self.send(
+            text_data=json.dumps(
+                {"processing_complete": True, "message": "Video processing completed."}
+            )
+        )
 
     async def send_hello_response(self):
         # Send a simple hello response
-        await self.send(text_data=json.dumps({
-            'message': 'hello'
-        }))
+        await self.send(text_data=json.dumps({"message": "hello"}))
